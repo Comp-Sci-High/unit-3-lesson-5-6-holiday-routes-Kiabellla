@@ -7,6 +7,10 @@ app.get("/", (req, res) => {
   res.sendFile(__dirname + "/public/index.html");
 })
 
+app.get("/easter", (req, res) => {
+  res.sendFile(__dirname + "/public/easter.html");
+})
+
 app.listen(3000, () => {
   console.log(`Holiday Server is Running!`)
 });
