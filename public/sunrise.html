@@ -3,22 +3,227 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Sunrise Services — Easter</title>
+  <title>Easter Egg Hunt — Sunrise Game</title>
   <link rel="stylesheet" href="easter.css">
   <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    .game-area {
+      position: relative;
+      width: 100%;
+      max-width: 800px;
+      height: 600px;
+      background: linear-gradient(180deg, #d7f0ff, #fff); /* Default */
+      border-radius: 16px;
+      margin: 1rem auto;
+      overflow: hidden;
+      box-shadow: 0 12px 40px rgba(16,24,40,.08);
+      transition: background 0.5s ease;
+    }
+    .game-area.level-1 {
+      background: linear-gradient(180deg, #b8e6b8, #fff), url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text fill="%23666" font-size="20" y="50%">🌱</text></svg>') repeat;
+      background-size: 50px 50px;
+    }
+    .game-area.level-2 {
+      background: linear-gradient(180deg, #a8d5a8, #fff), url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text fill="%23666" font-size="20" y="50%">🌳</text></svg>') repeat;
+      background-size: 60px 60px;
+    }
+    .game-area.level-3 {
+      background: linear-gradient(180deg, #f0e68c, #fff), url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text fill="%23666" font-size="20" y="50%">🏖️</text></svg>') repeat;
+      background-size: 70px 70px;
+    }
+    .game-area.level-4 {
+      background: linear-gradient(180deg, #dda0dd, #fff), url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text fill="%23666" font-size="20" y="50%">🏔️</text></svg>') repeat;
+      background-size: 80px 80px;
+    }
+    .egg {
+      position: absolute;
+      width: 40px;
+      height: 52px;
+      background: #ffd1c1;
+      border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+      cursor: pointer;
+      transition: transform 0.2s;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+    .egg:hover {
+      transform: scale(1.1);
+    }
+    .score {
+      text-align: center;
+      font-size: 1.5rem;
+      margin-bottom: 1rem;
+    }
+    .level-timer {
+      text-align: center;
+      font-size: 1.2rem;
+      margin-bottom: 1rem;
+    }
+    .restart {
+      display: block;
+      margin: 1rem auto;
+      padding: 0.75rem 1.5rem;
+      background: linear-gradient(90deg, #8b5fbf, #ff7fbf);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    .restart:hover {
+      transform: translateY(-2px);
+    }
+  </style>
 </head>
 <body class="easter">
   <header class="mast">
-    <h1>Sunrise Services</h1>
-    <p class="sub">Worship at dawn to celebrate new beginnings</p>
+    <h1>Easter Egg Hunt</h1>
+    <p class="sub">Find and collect all the hidden eggs!</p>
   </header>
 
   <main class="wrap">
-    <p>Join sunrise services to worship Jesus' resurrection, marking the new day and eternal hope.</p>
-    <p>Find a service: <a href="https://www.google.com/search?q=sunrise+easter+services+near+me" target="_blank">Search nearby</a></p>
+    <div class="level-timer">Level: <span id="level">1</span> | Time: <span id="timer">30</span>s</div>
+    <div class="score">Eggs Collected: <span id="score">0</span> / <span id="total">5</span></div>
+    <div class="game-area" id="game-area"></div>
+    <button class="restart" onclick="restartGame()">Restart Game</button>
     <a href="easter.html" class="cta">Back to Easter</a>
   </main>
 
-  <footer class="foot">© Springtime • Demo page</footer>
+  <footer class="foot">© Springtime • Easter Egg Hunt Game</footer>
+
+  <script>
+    let eggs = [];
+    let collected = 0;
+    let level = 1;
+    let timeLeft = 30;
+    let timerInterval;
+    const gameArea = document.getElementById('game-area');
+    const scoreDisplay = document.getElementById('score');
+    const totalDisplay = document.getElementById('total');
+    const levelDisplay = document.getElementById('level');
+    const timerDisplay = document.getElementById('timer');
+
+    // Sound functions using Web Audio API
+    function playSound(frequency, duration, type = 'sine') {
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      oscillator.frequency.value = frequency;
+      oscillator.type = type;
+      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + duration);
+    }
+
+    function playCollectSound() {
+      playSound(800, 0.1); // High beep
+    }
+
+    function playLevelUpSound() {
+      playSound(600, 0.2); // Success chime
+      setTimeout(() => playSound(800, 0.2), 200);
+    }
+
+    function playTimeUpSound() {
+      playSound(200, 0.5); // Low beep
+    }
+
+    function updateBackground() {
+      gameArea.className = 'game-area level-' + Math.min(level, 4); // Max 4 levels
+    }
+
+    function getEggsForLevel(level) {
+      return 3 + level * 2; // Level 1: 5, Level 2: 7, etc.
+    }
+
+    function createEggs() {
+      const totalEggs = getEggsForLevel(level);
+      totalDisplay.textContent = totalEggs;
+      for (let i = 0; i < totalEggs; i++) {
+        const egg = document.createElement('div');
+        egg.classList.add('egg');
+        egg.style.left = Math.random() * (gameArea.clientWidth - 40) + 'px';
+        egg.style.top = Math.random() * (gameArea.clientHeight - 52) + 'px';
+        egg.addEventListener('click', collectEgg);
+        gameArea.appendChild(egg);
+        eggs.push(egg);
+      }
+    }
+
+    function collectEgg(event) {
+      event.target.remove();
+      collected++;
+      scoreDisplay.textContent = collected;
+      playCollectSound();
+      if (collected === getEggsForLevel(level)) {
+        clearInterval(timerInterval);
+        setTimeout(() => {
+          playLevelUpSound();
+          alert(`Level ${level} complete! Moving to level ${level + 1}`);
+          nextLevel();
+        }, 500);
+      }
+    }
+
+    function nextLevel() {
+      level++;
+      collected = 0;
+      timeLeft = 30;
+      levelDisplay.textContent = level;
+      timerDisplay.textContent = timeLeft;
+      updateBackground();
+      eggs.forEach(egg => egg.remove());
+      eggs = [];
+      createEggs();
+      startTimer();
+    }
+
+    function startTimer() {
+      timerInterval = setInterval(() => {
+        timeLeft--;
+        timerDisplay.textContent = timeLeft;
+        if (timeLeft <= 0) {
+          clearInterval(timerInterval);
+          playTimeUpSound();
+          alert('Time\'s up! Try again.');
+          restartLevel();
+        }
+      }, 1000);
+    }
+
+    function restartLevel() {
+      collected = 0;
+      timeLeft = 30;
+      scoreDisplay.textContent = collected;
+      timerDisplay.textContent = timeLeft;
+      eggs.forEach(egg => egg.remove());
+      eggs = [];
+      createEggs();
+      startTimer();
+    }
+
+    function restartGame() {
+      level = 1;
+      collected = 0;
+      timeLeft = 30;
+      levelDisplay.textContent = level;
+      timerDisplay.textContent = timeLeft;
+      updateBackground();
+      scoreDisplay.textContent = collected;
+      eggs.forEach(egg => egg.remove());
+      eggs = [];
+      createEggs();
+      clearInterval(timerInterval);
+      startTimer();
+    }
+
+    wiupdateBackground();
+      ndow.addEventListener('load', () => {
+      createEggs();
+      startTimer();
+    });
+  </script>
 </body>
 </html>
